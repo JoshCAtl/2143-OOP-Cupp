@@ -7,3 +7,4 @@
 |   H02-05    |   [H02](https://github.com/JoshCAtl/2143-OOP-Cupp/tree/master/Assignments/H02)    |   Poker Game design           |
 |   H03-06    |   [H03](https://github.com/JoshCAtl/2143-OOP-Cupp/tree/master/Assignments/H03)    | Overloading operaters
 |   H04-07    |   [H04](https://github.com/JoshCAtl/2143-OOP-Cupp/tree/master/Assignments/H04)    | Poker Game Design           |
+|   H05-09    |   [H05](https://github.com/JoshCAtl/2143-OOP-Cupp/tree/master/Assignments/H05)    | Not Just Poker          |
