@@ -1,1 +1,515 @@
+import pygame
+import random
+import math
+import sys,os
+import json
+
+
+#list of colors
+colors = ["blue", "red", "yellow", "orange", "green"]
+states = ["susceptible", "infected", "recovered"]
+
+if os.path.isfile("config.json"):
+       
+        # open config for reading
+        f = open("config.json","r")
+
+        # read the file into a "data" variable
+        data = f.read()
+
+        # convert json into a python dictionary
+        config = json.loads(data)
+
+        # print the data out to the screen
+        for key in config:
+            print(key, config[key])
+
+       
+
+
+class Person(pygame.sprite.Sprite):
+ 
+ 
+    def __init__(self, **kwargs):
+      
+      
+      super().__init__()
+      self.width = kwargs.get("width", 10)
+      self.height = kwargs.get("height", 10)
+      self.speed = kwargs.get("speed", 1)
+      self.coord = kwargs.get("coord", None)
+      self.color = kwargs.get("color", "green")
+      self.state = kwargs.get("susceptible")
+
+
+      self.screen = screen
+      self.daysinfected = 0
+      
+
+        
+      if self.color == "yellow":
+         self.state = "susceptible"
+      elif self.color == "red":
+          self.state = "infected"
+      elif self.color == "green":
+          self.state = "recoveered"
+      else:
+          self.color == "blue"
+
+          
+      
+      # choose sprite direction
+      self.dx = 0
+      self.dy = 0
+      while self.dx + self.dy == 0:
+            self.dx = random.choice([1, -1, 0])
+            self.dy = random.choice([1, -1, 0])
+
+    # give our sprite an image and resize it
+      self.image = pygame.image.load(config["images"][self.color])
+      self.image = pygame.transform.scale(self.image,                                            (self.width, self.height))
+
+
+
+    # set sprite position
+      if self.coord == None:
+          self.x = int(random.random() * config["game"]["width"])
+          self.y = int(random.random() * config["game"]["height"])
+      else:
+          self.x = self.coord[0]
+          self.y = self.coord[1]
+
+      # sprite bounding rectangle
+      self.rect = self.image.get_rect(center=(self.x, self.y))
+
+
+
+    def __repr__(self):
+        ''' Representation or a unambigous printout of your object
+        '''
+        return self.__str__()
+
+    def __str__(self):
+        ''' String printout of your object
+        '''
+        c = self.color
+        s = self.speed
+        x = self.x
+        y = self.y
+        r = self.rect 
+        return f"Color: {c}, Speed: {s}, X: {x}, Y: {y}, Rect: {r}"
+
+
+    def setDxDy(self, dx, dy):
+      self.dx = dx
+      self.dy = dy
+
+    def getDxDy(self):
+      return (self.dx, self.dy)
+
+
+    def changeDirection(self, sides_contacted):
+      if sides_contacted["top"]:
+            self.dy = 1
+      if sides_contacted["bottom"]:
+            self.dy = -1
+      if sides_contacted["left"]:
+            self.dx = 1
+      if sides_contacted["right"]:
+            self.dx = -1
+
+
+    def move(self):
+
+      sides_contacted = self.checkWalls()
+
+      self.changeDirection(sides_contacted)
+
+      if self.dx < 0:
+          self.rect.x -= self.speed
+      elif self.dx > 0:
+          self.rect.x += self.speed
+
+      if self.dy < 0:
+          self.rect.y -= self.speed
+      elif self.dy > 0:
+          self.rect.y += self.speed
+
+
+    def checkCollide(self, other):
+        sides_contacted = {
+            "top": False,
+            "bottom": False,
+            "left": False,
+            "right": False
+          }
+
+        if self.rect.colliderect(other.rect):
+
+            if self.rect.top < other.rect.top:
+                sides_contacted["bottom"] = True
+                self.rect.y -= abs(self.rect.y - other.rect.y) 
+            if self.rect.left < other.rect.left:
+                sides_contacted["right"] = True
+                self.rect.x -= abs(self.rect.x - other.rect.x) 
+            if self.rect.right > other.rect.right:
+                sides_contacted["left"] = True
+                self.rect.x += abs(self.rect.x - other.rect.x) 
+            if self.rect.bottom > other.rect.bottom:
+                sides_contacted["top"] = True
+                self.rect.y += abs(self.rect.y - other.rect.y) 
+
+                
+
+            self.changeDirection(sides_contacted)
+
+            return True
+                
+
+        return False
+
+
+    def checkWalls(self):
+        sides = {"top": False, "bottom": False, "left":False, "right":False}
+
+        if self.rect.top <= 0:
+          sides["top"] = True
+
+        if self.rect.left <= 0:
+          sides["left"] = True
+
+        if self.rect.right >= config["game"]["width"]:
+          sides["right"] = True
+
+        if self.rect.bottom >= config["game"]["height"]:
+          sides["bottom"] = True
+
+        return sides;
+
+
+    def checkInfect(self,other):
+            if other.state == "infected":
+              if self.state == "susceptible":
+                     self.color = "red"
+                     self.state = "infected"
+                     self.num_infected += 1
+              elif self.state == "recovered":
+                     other.color = "blue"
+                     other.state = "recovered"
+                     other.num_infected -= 1
+              elif other.state == "recovered":
+                 if self.state == "infected":
+                     self.color == "blue"
+                     self.state == "recovered"
+                     
+
+   
+   
+    def infec_Duration(self, s, d):
+      if self.state == "infected": #update counter
+            self.daysinfected += 1
+      else:
+          return
+        
+      if self.daysinfected == d:
+          self.state = "recovered" 
+          self.image = pygame.image.load(config["images"]["green"])
+          self.image = pygame.transform.scale(self.image, 
+                                             (self.width, self.height))  
+
+
+
+class SimStats(object):
+    def __init__(self):
+        pass
+
+class Community(SimStats):
+    def __init__(self):
+        pass
+
+class Simulation():
+    def __init__(self, **kwargs):
+      self.population = []
+      self.num_infected = kwargs.get("num_infected", 5)
+      self.game_width = kwargs.get("width", 500)
+      self.game_height = kwargs.get("height", 500)
+      self.population_count = kwargs.get("population_count", 100)
+      self.sprite_group = pygame.sprite.Group()
+      self.screen = kwargs.get("screen", None)
+      self.R = 0  #R, the average number of people each infected person infects
+
+
+      if self.screen == None:
+            print(
+                "Error: Simulation needs an instance of a pygame surface / screen!"
+            )
+            sys.exit()
+
+    def populateSim(self, pos=None):
+      for _ in range(self.num_infected):
+        self.addInfected()
+
+      self.numsus = self.population_count - self.num_infected
+
+      for _ in range(self.numsus):
+        self.addSus()
+
+
+
+    def addPerson(self, **kwargs):
+      
+      width = kwargs.get("width", config["sprite"]["width"])
+      height = kwargs.get("height", config["sprite"]["height"])
+      speed = kwargs.get("speed", config["sprite"]["speed"])
+      state = kwargs.get("state", random.choice(states))
+
+      if state == "infected":
+            color = kwargs.get("color", "red")
+      elif state == "susceptible":
+            color = kwargs.get("color", "white")
+      elif state == "recovered":
+            color = kwargs.get("color", "blue")
+      else: color = kwargs.get("color", random.choice(colors))
+
+
+      x = random.randint(0, self.game_width)
+      y = random.randint(0, self.game_height)
+      coord = kwargs.get("coord", [x, y])
+      
+    
+
+      p = Person(color=color,
+                width=config["sprite"]["width"],
+                height=config["sprite"]["height"],
+                speed=config["sprite"]["speed"],
+                coord=coord)
+
+      self.population.append(p)
+            
+      self.sprite_group.add(p)
+
+    def addSus(self, **kwargs):
+        x = random.randint(0, self.game_width) 
+        y = random.randint(0, self.game_height)
+        coord = kwargs.get("coord", [x, y])
+
+
+        p = Person(color="yellow",
+                   width=config["sprite"]["width"],
+                   height=config["sprite"]["height"],
+                   speed=config["sprite"]["speed"],
+                   coord=coord)
+
+
+        self.population.append(p)
+        self.sprite_group.add(p)
+
+
+
+
+
+    #adds infected person(red)
+    def addInfected(self, **kwargs):
+
+        x = random.randint(0, self.game_width) 
+        y = random.randint(0, self.game_height)
+        coord = kwargs.get("coord", [x, y])
+
+        self.num_infected += 1
+
+        p = Person(color="red",
+                   width=config["sprite"]["width"],
+                   height=config["sprite"]["height"],
+                   speed=config["sprite"]["speed"],
+                   coord=coord)
+
+        self.population.append(p)
+        self.sprite_group.add(p)
+
+
+    def simRun(self):
+        
+        # loop through each person and call a move method
+        for i in range(len(self.population)):
+          self.poputlation[i].move()
+          for j in range(len(self.poputlation)):
+              if self.population[i] != self.population[j]:
+                    collided = self.population[i].checkCollide(self.population[j])
+                    if collided:
+                      dx, dy = self.population[i].getDxDy()
+                      self.population[j].setDxDy(dx * -1, dy * -1)
+                      if self.population[i].state == "susceptible":
+                            if self.population[j].state == "infected":
+                                tempTest = random.random()
+                            if tempTest <= config["sim"]["infection_rate"]:
+                                  self.population[i].state = "infected"
+                                  self.population[i].color = "red"
+                                  self.population[i].image = pygame.image.load(config                            ["images"][self.population[i].color])
+                                  self.population[i].image = pygame.transform.scale                                       (self.population[i].image,
+                                                                (self.population[i].width, self.population[i].height))
+                                    
+                                  self.num_infected += 1                            
+
+                      if self.population[i].state == "infected":
+                            if self.population[j].state == "susceptible":
+                                tempTest = random.random()
+                            if tempTest <= config["sim"]["infection_rate"]:
+                                  self.population[j].state = "infected"
+                                  self.population[j].color = "red"
+                                  self.population[j].image = pygame.image.load(config                            ["images"][self.population[j].color])
+                                  self.population[j].image = pygame.transform.scale                                       (self.population[j].image,
+                                                                (self.population[j].width, self.population[j].height))
+                                                               
+                                  self.num_infected += 1
+
+                                                  
+                      self.calcR()
+                      self.sprite_group.draw(self.screen)
+
+
+    def get_num_infected(self):
+        return self.num_infected
+
+    def get_population_count(self):
+        return self.population_count
+
+    def calcR(self):
+      p = self.num_Infected
+      if p != 0:
+        sum = 0
+        for i in (self.population):
+            sum += i.encounters
+            self.R = sum / p
+      else:
+          self.R = 0
+      return self.R
+
+
+
+
+#__________________________________________________________________________
+
+#main function
+if __name__ == '__main__':
+  pygame.init()
+
+
+
+  # define the RGB value for white, 
+    #  green, blue colour . 
+  white = (255, 255, 255) 
+  green = (0, 255, 0) 
+  blue = (0, 0, 128)
+  grey = (25, 25, 25) 
+    
+    # assigning values to X and Y variable 
+  X = config["game"]["width"] - 20
+  Y = config["game"]["height"] - 20
+    
+    # create the display surface object 
+    # of specific dimension..e(X, Y). 
+  display_surface = pygame.display.set_mode((X, Y ))
+
+
+
+  pygame.display.set_caption('Covid Sim')
+  sprites_list = []
+
+  # Set up the drawing window
+  screen = pygame.display.set_mode(
+      [config["game"]["width"], config["game"]["height"]])
+
+#font = pygame.font.Font('Roboto-Black.ttf', 20) 
+
+
+sim = Simulation(screen=screen,
+    width=config["game"]["width"],
+    height=config["game"]["height"],
+    population=config["sim"]["population_count"],
+    num_infected=config["sim"]["num_infected"])
+
+sim.populateSim()
+
+#prnt = FontHelper(screen=screen)
+
+
+
+clock = pygame.time.Clock()
+# Run until the user asks to quit
+running = True
+
+y = 0
+days = 1
+   
+#___ GAME LOOP ____________________________________________________________ 
+while running:
+        # Fill the background with blackish
+        # Do not do this after you draw sprites!
+      screen.fill((30, 30, 30))
+
+      r = "R = "
+
+      y = y + 1
+      if y == 20:
+          days = days + 1
+          y = 0
+          print("day: ", days)
+          print("R = ", sim.R)
+          for i in sim.population:
+              i.infec_Duration(config["sim"]["infection_duration"], days)
+
+
+    
+
+        # Did the user click the window close button?
+      for event in pygame.event.get():
+          if event.type == pygame.QUIT:
+              running = False
+
+
+                # handle MOUSEBUTTONUP
+          if event.type == pygame.MOUSEBUTTONUP:
+              pos = pygame.mouse.get_pos()
+              sim.addPerson(coord=pos)
+
+
+        
+
+      r += str(sim.R)
+      print(str(r))
+
+#___CONTROL SIMULATION HERE_____________________________________________________________
+ 
+rect_width = 2
+    #right
+pygame.draw.rect(screen,(250,200,200),(config["game"]["width"]//1.25,0,config["game"]["width"]//5-rect_width//2,config["game"]["height"]),rect_width)
+
+
+sim.simRun()
+
+
+
+#___END CONTROL SIMULATION_____________________________________________________________
+
+  # This keeps game loop running at a constant FPS
+clock.tick(config["game"]["fps"])  # FPS = frames per second
+
+  # Count number of loops game runs (careful, this number could get LARGE)
+config["game"]["loop_count"] += 1
+
+  # Flip the display (refresh the screen)
+pygame.display.flip()
+print(str(r))
+ 
+#___ END GAME LOOP ____________________________________________________________
+# Done! Time to quit.
+pygame.quit()
+
+
+
+
+
+
+
+
 
